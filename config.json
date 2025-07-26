@@ -1,0 +1,40 @@
+{
+  "plant_settings": {
+    "cannabis_medical": {
+      "vegetative": {
+        "dli": 25,
+        "photoperiod_hours": 18
+      },
+      "flowering": {
+        "dli": 40,
+        "photoperiod_hours": 12
+      }
+    }
+  },
+  "led_panels": [
+    {
+      "name": "100W Panel (30x30cm)",
+      "wattage": 100,
+      "size_x": 0.3,
+      "size_y": 0.3,
+      "efficacy_ppf_w": 2.5
+    },
+    {
+      "name": "250W Panel (60x60cm)",
+      "wattage": 250,
+      "size_x": 0.6,
+      "size_y": 0.6,
+      "efficacy_ppf_w": 2.7
+    },
+    {
+      "name": "480W Panel (60x120cm)",
+      "wattage": 480,
+      "size_x": 0.6,
+      "size_y": 1.2,
+      "efficacy_ppf_w": 2.8
+    }
+  ],
+  "default_settings": {
+    "light_height_from_canopy": 0.4
+  }
+}

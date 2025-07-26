@@ -17,7 +17,9 @@ class VIEW3D_PT_hydroponics_generator(Panel):
         props = context.scene.hydroponics_props
         layout_props = props.layout_props
         pipe_props = props.pipe_props
+        lighting_props = props.lighting_props # Add this
 
+        # System Layout Box
         box = layout.box()
         box.label(text="System Layout", icon='GRID')
         row = box.row()
@@ -26,15 +28,28 @@ class VIEW3D_PT_hydroponics_generator(Panel):
         box.prop(layout_props, "spacing_x")
         box.prop(layout_props, "spacing_y")
 
+        # Pot Properties Box
         box = layout.box()
         box.label(text="Pot Properties", icon='CUBE')
         box.prop(props.pot_props, "volume")
 
+        # Pipe Properties Box
         box = layout.box()
         box.label(text="Pipe Properties", icon='MOD_CURVE')
         box.prop(pipe_props, "pipe_standard")
         box.prop(pipe_props, "pipe_size")
+        
+        # --- NEW: Lighting System Box ---
+        box = layout.box()
+        box.label(text="Lighting System", icon='LIGHT')
+        box.prop(lighting_props, "enable_lighting")
+        
+        if lighting_props.enable_lighting:
+            box.prop(lighting_props, "plant_stage")
+            box.prop(lighting_props, "led_panel_type")
+            box.prop(lighting_props, "light_height")
 
+        # Main Reservoir Box
         box = layout.box()
         box.label(text="Main Reservoir", icon='MOD_FLUID')
         box.prop(props, "enable_reservoir")

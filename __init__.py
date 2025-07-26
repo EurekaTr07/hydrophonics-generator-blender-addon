@@ -1,19 +1,42 @@
 bl_info = {
     "name": "Hydroponics System Generator (RDWC)",
     "author": "Gemini & AgroFlow",
-    "version": (2, 2, 1),
+    "version": (2, 3, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Sidebar > Hydroponics",
-    "description": "Creates professional RDWC systems with high-detail fittings and precise snap logic.",
+    "description": "Creates professional RDWC systems with lighting calculation.",
     "warning": "",
-    "doc_url": "https://github.com/your_repo_link_here",  # Optional: Add your documentation link
+    "doc_url": "",
     "category": "Add Mesh",
 }
 
-from . import properties, mesh_creator, operators, ui
-
 import bpy
 from bpy.props import PointerProperty
+import json
+import os
+
+from . import properties, mesh_creator, operators, ui
+
+# --- Addon Configuration Loading ---
+def load_config():
+    """Loads the config.json file from the addon's directory."""
+    addon_dir = os.path.dirname(__file__)
+    config_path = os.path.join(addon_dir, "config.json")
+    
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                print("Hydroponics Addon: Error reading config.json. File might be corrupted.")
+                return None
+    else:
+        print(f"Hydroponics Addon: config.json not found at {config_path}")
+        return None
+
+# Store config globally within the addon
+addon_config = load_config()
+
 
 addon_keymaps = []
 
@@ -25,30 +48,27 @@ def register():
     operators.register()
     ui.register()
     
-    # Add the main properties to the scene
+    # Pass the loaded config to the scene properties
     bpy.types.Scene.hydroponics_props = PointerProperty(type=properties.HydroponicsSystemProperties)
+    
+    # Store config in a place accessible by operators/panels
+    # This makes it available without passing it around constantly
+    bpy.types.Scene.hydroponics_config = addon_config
 
-    # Add keymap for Ctrl+K
-    wm = bpy.context.window_manager
-    kc = wm.keyconfigs.addon
-    if kc:
-        km = wm.keyconfigs.addon.keymaps.new(name='Window', space_type='WINDOW')
-        kmi = km.keymap_items.new('wm.hydroponics_generator', type='K', ctrl=True, shift=False, alt=False)
-        addon_keymaps.append(km)
 
 def unregister():
     """Unregisters the addon from Blender."""
-    # Delete the main properties from the scene
     if hasattr(bpy.types.Scene, 'hydroponics_props'):
         del bpy.types.Scene.hydroponics_props
+    if hasattr(bpy.types.Scene, 'hydroponics_config'):
+        del bpy.types.Scene.hydroponics_config
         
-    # Unregister keymaps
-    wm = bpy.context.window_manager
+    # Unregister keymaps and modules
+    # (The rest of your unregister function remains the same)
     for km in addon_keymaps:
-        wm.keyconfigs.addon.keymaps.remove(km)
+        bpy.context.window_manager.keyconfigs.addon.keymaps.remove(km)
     addon_keymaps.clear()
-
-    # Unregister modules in reverse order
+    
     ui.unregister()
     operators.unregister()
     mesh_creator.unregister()

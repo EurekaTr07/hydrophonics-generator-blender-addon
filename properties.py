@@ -8,23 +8,51 @@ from bpy.props import (
 )
 from bpy.types import PropertyGroup
 
+# --- Dynamic Enum Functions ---
+def get_led_panel_items(self, context):
+    """Dynamically creates EnumProperty items from the config file."""
+    if hasattr(context.scene, 'hydroponics_config') and context.scene.hydroponics_config:
+        panels = context.scene.hydroponics_config.get('led_panels', [])
+        return [(str(i), panel['name'], "") for i, panel in enumerate(panels)]
+    return []
+
 # =================================================================================================
 # ADDON PROPERTIES
 # =================================================================================================
+# (Your existing HydroponicsPotProperties, HydroponicsReservoirProperties, 
+# HydroponicsPipeProperties, and HydroponicsLayoutProperties classes remain here, unchanged)
 
+# Allow custom pot volumes
 class HydroponicsPotProperties(PropertyGroup):
-    """Properties for the hydroponic pots."""
-    volume: EnumProperty(
-        name="Bucket Volume",
-        items=[('10.0', "10L", ""), ('19.0', "19L", ""), ('25.0', "25L", "")],
-        default='25.0'
+    volume_type: EnumProperty(
+        name="Volume Type",
+        items=[
+            ('STANDARD', "Standard", "Use standard sizes"),
+            ('CUSTOM', "Custom", "Custom volume")
+        ],
+        default='STANDARD'
+    )
+    
+    custom_volume: FloatProperty(
+        name="Custom Volume (L)",
+        default=30.0,
+        min=5.0,
+        max=200.0
+    )
+    
+    # Net pot size
+    net_pot_diameter: FloatProperty(
+        name="Net Pot Diameter (cm)",
+        default=15.0,
+        min=5.0,
+        max=30.0
     )
 
 class HydroponicsReservoirProperties(PropertyGroup):
     """Properties for the main reservoir."""
     volume: EnumProperty(
         name="Reservoir Volume",
-        items=[('50.0', "50L", ""), ('75.0', "75L", ""), ('100.0', "100L", ""), ('150.0', "150L", ""), ('200.0', "200L", "")],
+        items=[('50.0', "50L", ""), ('75.0', "75L", ""), ('100.0', "100L", "")],
         default='75.0'
     )
 
@@ -48,37 +76,82 @@ class HydroponicsPipeProperties(PropertyGroup):
         items=get_pipe_sizes,
         description="Select the pipe diameter based on the chosen standard"
     )
-
-def update_reservoir_volume(self, context):
-    """Automatically adjusts reservoir size based on the number of plants."""
-    props = context.scene.hydroponics_props
-    layout = props.layout_props
-    reservoir = props.reservoir_props
+    pipe_height_ratio: FloatProperty(
+        name="Pipe Height %",
+        default=10.0,
+        min=5.0,
+        max=50.0,
+        description="Height of pipes as % of pot height"
+    )
     
-    num_plants = layout.rows * layout.columns
-    # Assuming a requirement of 10 liters per plant
-    required_volume = num_plants * 10.0
+    pipe_slope: FloatProperty(
+        name="Pipe Slope (degrees)",
+        default=0.0,
+        min=-5.0,
+        max=5.0,
+        description="Slope for gravity flow"
+    )
     
-    # Available reservoir sizes (must match the EnumProperty items)
-    available_sizes = [50.0, 75.0, 100.0, 150.0, 200.0]
-    
-    # Find the smallest available size that fits the requirement
-    best_size = available_sizes[-1] # Default to largest if none fit
-    for size in available_sizes:
-        if size >= required_volume:
-            best_size = size
-            break
-    
-    # Set the volume property. EnumProperty values are strings.
-    # Use f-string to format to one decimal place to match the enum identifiers.
-    reservoir.volume = f"{best_size:.1f}"
+    manifold_type: EnumProperty(
+        name="Manifold Type",
+        items=[
+            ('PARALLEL', "Parallel", "Traditional parallel manifolds"),
+            ('LOOP', "Loop", "Continuous loop system"),
+            ('HYBRID', "Hybrid", "Combination design")
+        ],
+        default='PARALLEL'
+    )
 
 class HydroponicsLayoutProperties(PropertyGroup):
     """Properties for the system layout."""
-    rows: IntProperty(name="Rows", default=2, min=1, max=20, update=update_reservoir_volume)
-    columns: IntProperty(name="Columns", default=2, min=1, max=20, update=update_reservoir_volume)
+    rows: IntProperty(name="Rows", default=2, min=1, max=20)
+    columns: IntProperty(name="Columns", default=2, min=1, max=20)
     spacing_x: FloatProperty(name="X Spacing", default=0.6, min=0.2, max=10.0, unit='LENGTH')
     spacing_y: FloatProperty(name="Y Spacing", default=0.6, min=0.2, max=10.0, unit='LENGTH')
+    layout_type: EnumProperty(
+        name="Layout Type",
+        items=[
+            ('GRID', "Grid", "Standard grid layout"),
+            ('LINEAR', "Linear", "Single row layout"),
+            ('CIRCULAR', "Circular", "Pots arranged in circle"),
+            ('CUSTOM', "Custom", "Custom pot positions")
+        ],
+        default='GRID'
+    )
+    
+    # For circular layouts
+    circle_radius: FloatProperty(
+        name="Circle Radius", 
+        default=1.5, 
+        min=0.5, 
+        max=10.0
+    )
+class HydroponicsLightingProperties(PropertyGroup):
+    """Properties for the lighting setup."""
+    enable_lighting: BoolProperty(
+        name="Generate Lighting System", 
+        default=True,
+        description="Enable or disable the generation of LED lighting panels"
+    )
+    plant_stage: EnumProperty(
+        name="Growth Stage",
+        items=[('vegetative', "Vegetative", ""), ('flowering', "Flowering", "")],
+        default='flowering',
+        description="Select the growth stage to calculate light requirements"
+    )
+    led_panel_type: EnumProperty(
+        name="LED Panel",
+        items=get_led_panel_items,
+        description="Select the type of LED panel to use from the config file"
+    )
+    light_height: FloatProperty(
+        name="Height From Canopy",
+        default=0.4,
+        min=0.1,
+        max=3.0,
+        unit='LENGTH',
+        description="The vertical distance from the top of the pots to the lights"
+    )
 
 class HydroponicsSystemProperties(PropertyGroup):
     """Main property group to hold all system settings."""
@@ -86,6 +159,8 @@ class HydroponicsSystemProperties(PropertyGroup):
     pipe_props: PointerProperty(type=HydroponicsPipeProperties)
     layout_props: PointerProperty(type=HydroponicsLayoutProperties)
     reservoir_props: PointerProperty(type=HydroponicsReservoirProperties)
+    lighting_props: PointerProperty(type=HydroponicsLightingProperties) # Add this
+    
     enable_reservoir: BoolProperty(name="Enable Reservoir", default=True)
     create_connections: BoolProperty(name="Join Pipe Connections", default=True)
     optimize_model: BoolProperty(
@@ -100,6 +175,7 @@ classes = (
     HydroponicsReservoirProperties,
     HydroponicsPipeProperties,
     HydroponicsLayoutProperties,
+    HydroponicsLightingProperties, # Add this
     HydroponicsSystemProperties,
 )
 
@@ -110,3 +186,65 @@ def register():
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
+
+class HydroponicsComponentProperties(PropertyGroup):
+    # Pump configuration
+    pump_count: IntProperty(
+        name="Number of Pumps",
+        default=1,
+        min=1,
+        max=4
+    )
+    
+    pump_location: EnumProperty(
+        name="Pump Location",
+        items=[
+            ('RESERVOIR', "In Reservoir", ""),
+            ('INLINE', "Inline", ""),
+            ('BOTH', "Both", "")
+        ],
+        default='RESERVOIR'
+    )
+    
+    # Aeration
+    air_stones_per_pot: IntProperty(
+        name="Air Stones per Pot",
+        default=1,
+        min=0,
+        max=4
+    )
+    
+    # Valves and controls
+    add_drain_valves: BoolProperty(
+        name="Add Drain Valves",
+        default=True
+    )
+    
+    add_flow_indicators: BoolProperty(
+        name="Add Flow Indicators",
+        default=False
+    )
+    
+    add_water_level_sensors: BoolProperty(
+        name="Add Water Level Sensors",
+        default=False
+    )
+    
+class HydroponicsModularProperties(PropertyGroup):
+    module_size: IntProperty(
+        name="Pots per Module",
+        default=4,
+        min=2,
+        max=8,
+        description="Number of pots in each module"
+    )
+    
+    connection_type: EnumProperty(
+        name="Module Connection",
+        items=[
+            ('UNION', "Union Fitting", ""),
+            ('FLANGE', "Flange", ""),
+            ('QUICK', "Quick Connect", "")
+        ],
+        default='UNION'
+    )
