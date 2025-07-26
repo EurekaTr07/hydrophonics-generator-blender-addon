@@ -24,7 +24,7 @@ class HydroponicsReservoirProperties(PropertyGroup):
     """Properties for the main reservoir."""
     volume: EnumProperty(
         name="Reservoir Volume",
-        items=[('50.0', "50L", ""), ('75.0', "75L", ""), ('100.0', "100L", "")],
+        items=[('50.0', "50L", ""), ('75.0', "75L", ""), ('100.0', "100L", ""), ('150.0', "150L", ""), ('200.0', "200L", "")],
         default='75.0'
     )
 
@@ -49,10 +49,34 @@ class HydroponicsPipeProperties(PropertyGroup):
         description="Select the pipe diameter based on the chosen standard"
     )
 
+def update_reservoir_volume(self, context):
+    """Automatically adjusts reservoir size based on the number of plants."""
+    props = context.scene.hydroponics_props
+    layout = props.layout_props
+    reservoir = props.reservoir_props
+    
+    num_plants = layout.rows * layout.columns
+    # Assuming a requirement of 10 liters per plant
+    required_volume = num_plants * 10.0
+    
+    # Available reservoir sizes (must match the EnumProperty items)
+    available_sizes = [50.0, 75.0, 100.0, 150.0, 200.0]
+    
+    # Find the smallest available size that fits the requirement
+    best_size = available_sizes[-1] # Default to largest if none fit
+    for size in available_sizes:
+        if size >= required_volume:
+            best_size = size
+            break
+    
+    # Set the volume property. EnumProperty values are strings.
+    # Use f-string to format to one decimal place to match the enum identifiers.
+    reservoir.volume = f"{best_size:.1f}"
+
 class HydroponicsLayoutProperties(PropertyGroup):
     """Properties for the system layout."""
-    rows: IntProperty(name="Rows", default=2, min=1, max=20)
-    columns: IntProperty(name="Columns", default=2, min=1, max=20)
+    rows: IntProperty(name="Rows", default=2, min=1, max=20, update=update_reservoir_volume)
+    columns: IntProperty(name="Columns", default=2, min=1, max=20, update=update_reservoir_volume)
     spacing_x: FloatProperty(name="X Spacing", default=0.6, min=0.2, max=10.0, unit='LENGTH')
     spacing_y: FloatProperty(name="Y Spacing", default=0.6, min=0.2, max=10.0, unit='LENGTH')
 
